@@ -1,21 +1,14 @@
 """Dreo API Library."""
 
-# flake8: noqa
-# from .pydreo import PyDreo
 import logging
-import threading
-import sys
 
 import json
-from itertools import chain
-from typing import Optional, Tuple
-from asyncio.exceptions import CancelledError
 
 from .constant import *
 from .helpers import Helpers
 from .models import *
 from .commandtransport import CommandTransport
-from .pydreobasedevice import PyDreoBaseDevice, UnknownModelError, UnknownProductError
+from .pydreobasedevice import PyDreoBaseDevice, UnknownModelError
 from .pydreounknowndevice import PyDreoUnknownDevice
 from .pydreotowerfan import PyDreoTowerFan
 from .pydreoaircirculator import PyDreoAirCirculator
@@ -25,8 +18,8 @@ from .pydreoheater import PyDreoHeater
 from .pydreoairconditioner import PyDreoAC
 from .pydreochefmaker import PyDreoChefMaker
 from .pydreohumidifier import PyDreoHumidifier
-from .pydreodehumidifier import PyDreoDehumidifier
 from .pydreoevaporativecooler import PyDreoEvaporativeCooler
+from .mixins.ledmixin import LedMixin
 
 _LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -39,7 +32,6 @@ _DREO_DEVICE_TYPE_TO_CLASS = {
     DreoDeviceType.AIR_CONDITIONER: PyDreoAC,
     DreoDeviceType.CHEF_MAKER: PyDreoChefMaker,
     DreoDeviceType.HUMIDIFIER: PyDreoHumidifier,
-    DreoDeviceType.DEHUMIDIFIER: PyDreoDehumidifier,
     DreoDeviceType.EVAPORATIVE_COOLER: PyDreoEvaporativeCooler
 }
 
@@ -196,6 +188,10 @@ class PyDreo:  # pylint: disable=function-redefined
 
                 if device_class is None:
                     device_class = PyDreoUnknownDevice
+
+                if device_details.integrated_light:
+                    mixin_name = f"{device_class.__name__}WithLed"
+                    device_class = type(mixin_name, (LedMixin, device_class), {})
                 
                 device : PyDreoBaseDevice = device_class(device_details, dev, self)
 
@@ -386,7 +382,7 @@ class PyDreo:  # pylint: disable=function-redefined
 
         return proc_return
     
-    def call_dreo_api(self, api: str, json_object: Optional[dict] = None) -> tuple:
+    def call_dreo_api(self, api: str, json_object: dict | None = None) -> tuple:
         """Call the Dreo API. This is used for login and the initial device list and states as well
            as device settings."""
         _LOGGER.debug("Calling Dreo API: {%s}", api)
@@ -420,8 +416,6 @@ class PyDreo:  # pylint: disable=function-redefined
         self._transport.testonly_interrupt_transport()
 
     def _transport_consume_message(self, message):
-        _LOGGER.debug("pydreo._transport_consume_message: %s", message)
-
         message_device_sn = message["devicesn"]
 
         if message_device_sn in self._device_list_by_sn:
@@ -446,11 +440,4 @@ class PyDreo:  # pylint: disable=function-redefined
         content = json.dumps(full_params)
         _LOGGER.debug(content)
 
-        if self.debug_test_mode:
-            _LOGGER.debug("Debug Test Mode is enabled.  Pretending we received the message...")
-            self._transport_consume_message({"devicesn": device.serial_number, 
-                                             "method": "report", 
-                                             "reported": params})
-        else:
-            # Send the message to the transport, which will then send it to the Dreo servers
-            self._transport.send_message(content)
+        self._transport.send_message(content)

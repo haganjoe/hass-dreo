@@ -66,7 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     _LOGGER.debug("Checking for supported installed device types")
     device_types = set()
     for device in pydreo_manager.devices:
-        device_types.add(device.type)   
+        device_types.add(device.type)
     _LOGGER.debug("Device types found are: %s", device_types)
     _LOGGER.info("%d Dreo devices found", len(pydreo_manager.devices))
 
@@ -79,9 +79,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         platforms.add(Platform.SENSOR)
         platforms.add(Platform.SWITCH)
         platforms.add(Platform.NUMBER)
-
-    if (DreoDeviceType.CEILING_FAN in device_types):
-        platforms.add(Platform.LIGHT)
 
     if (DreoDeviceType.HEATER in device_types or 
         DreoDeviceType.AIR_CONDITIONER in device_types):
@@ -96,13 +93,6 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         platforms.add(Platform.SWITCH)
         platforms.add(Platform.NUMBER)
 
-    if (DreoDeviceType.DEHUMIDIFIER in device_types):
-        platforms.add(Platform.HUMIDIFIER)
-        platforms.add(Platform.FAN)
-        platforms.add(Platform.SENSOR)
-        platforms.add(Platform.SWITCH)
-        platforms.add(Platform.NUMBER)
-
     if (DreoDeviceType.CHEF_MAKER in device_types):
         platforms.add(Platform.SENSOR)
         platforms.add(Platform.SWITCH)
@@ -113,6 +103,8 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
         platforms.add(Platform.SENSOR)
         platforms.add(Platform.SWITCH)
         platforms.add(Platform.NUMBER)
+
+    platforms.add(Platform.LIGHT) # TODO: get from device properties above
 
     pydreo_manager.start_transport()
 
